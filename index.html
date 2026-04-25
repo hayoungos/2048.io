@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2048 Clone</title>
+  <style>
+    :root {
+      --bg: #faf8ef;
+      --board: #bbada0;
+      --empty: #cdc1b4;
+      --text: #776e65;
+      --light: #f9f6f2;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .app {
+      width: min(92vw, 480px);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(48px, 12vw, 72px);
+      line-height: 0.9;
+      letter-spacing: -1px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 8px;
+    }
+
+    .stat {
+      background: #bbada0;
+      color: #eee4da;
+      border-radius: 6px;
+      min-width: 82px;
+      text-align: center;
+      padding: 6px 10px;
+    }
+
+    .stat .label {
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat .value {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: #fff;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      font-size: 15px;
+    }
+
+    button {
+      border: 0;
+      background: #8f7a66;
+      color: #f9f6f2;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .board-wrap {
+      position: relative;
+      background: var(--board);
+      border-radius: 8px;
+      padding: 12px;
+      touch-action: none;
+    }
+
+    .board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      background: var(--empty);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(24px, 7vw, 42px);
+      font-weight: 700;
+      color: var(--text);
+      transition: transform 0.08s ease;
+    }
+
+    .cell.n0 { color: transparent; }
+    .cell.n2 { background: #eee4da; }
+    .cell.n4 { background: #ede0c8; }
+    .cell.n8 { background: #f2b179; color: var(--light); }
+    .cell.n16 { background: #f59563; color: var(--light); }
+    .cell.n32 { background: #f67c5f; color: var(--light); }
+    .cell.n64 { background: #f65e3b; color: var(--light); }
+    .cell.n128 { background: #edcf72; color: var(--light); font-size: clamp(20px, 6vw, 34px); }
+    .cell.n256 { background: #edcc61; color: var(--light); font-size: clamp(20px, 6vw, 34px); }
+    .cell.n512 { background: #edc850; color: var(--light); font-size: clamp(20px, 6vw, 34px); }
+    .cell.n1024 { background: #edc53f; color: var(--light); font-size: clamp(18px, 5vw, 30px); }
+    .cell.n2048 { background: #edc22e; color: var(--light); font-size: clamp(18px, 5vw, 30px); }
+    .cell.super { background: #3c3a32; color: var(--light); font-size: clamp(16px, 4vw, 26px); }
+
+    .moving-tile {
+      position: absolute;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--text);
+      z-index: 8;
+      transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+      will-change: transform;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 12px;
+      background: rgba(238, 228, 218, 0.78);
+      border-radius: 6px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 12px;
+      gap: 10px;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .overlay h2 {
+      margin: 0;
+      font-size: clamp(32px, 9vw, 52px);
+    }
+
+    .overlay .final-score {
+      font-weight: 700;
+      font-size: 18px;
+      color: #6d6259;
+    }
+
+    .ranking {
+      width: min(100%, 280px);
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: left;
+    }
+
+    .ranking-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .ranking ol {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 4px;
+      font-weight: 700;
+      color: #6d6259;
+    }
+
+    .ranking li.empty {
+      list-style: none;
+      margin-left: -18px;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="header">
+      <h1>2048</h1>
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Score</div>
+          <div class="value" id="score">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Best</div>
+          <div class="value" id="best">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div>같은 숫자를 합쳐서 2048을 만드세요.</div>
+      <button id="restart">새 게임</button>
+    </section>
+
+    <section class="board-wrap" id="boardWrap" aria-label="2048 board">
+      <div class="board" id="board"></div>
+      <div class="overlay" id="overlay">
+        <h2 id="overlayTitle"></h2>
+        <div class="final-score" id="finalScore"></div>
+        <div class="ranking">
+          <div class="ranking-title">Top 5 Ranking</div>
+          <ol id="rankingList"></ol>
+        </div>
+        <button id="playAgain">다시 하기</button>
+      </div>
+    </section>
+
+    <p class="hint">조작: 방향키 / WASD / 스와이프</p>
+  </main>
+
+  <script>
+    const SIZE = 4;
+    const boardEl = document.getElementById("board");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const overlayEl = document.getElementById("overlay");
+    const overlayTitleEl = document.getElementById("overlayTitle");
+    const finalScoreEl = document.getElementById("finalScore");
+    const rankingListEl = document.getElementById("rankingList");
+    const boardWrapEl = document.getElementById("boardWrap");
+    const bestKey = "best-2048-clone";
+    const rankingKey = "ranking-2048-clone";
+    const rankingApiUrl = "/api/rankings";
+
+    let grid = [];
+    let score = 0;
+    let best = Number(localStorage.getItem(bestKey)) || 0;
+    let hasWon = false;
+    let gameOver = false;
+    let isAnimating = false;
+    let touchStart = null;
+    let latestRankings = [];
+
+    bestEl.textContent = best;
+
+    function setupBoard() {
+      boardEl.innerHTML = "";
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell n0";
+        cell.textContent = "";
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function initGame() {
+      grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+      score = 0;
+      hasWon = false;
+      gameOver = false;
+      isAnimating = false;
+      hideOverlay();
+      addRandomTile();
+      addRandomTile();
+      render();
+    }
+
+    function getRankings() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(rankingKey) || "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((v) => Number.isFinite(v));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRankings(values) {
+      localStorage.setItem(rankingKey, JSON.stringify(values));
+    }
+
+    function updateRanking(scoreValue) {
+      const rankings = getRankings();
+      rankings.push(scoreValue);
+      rankings.sort((a, b) => b - a);
+      const top = rankings.slice(0, 5);
+      saveRankings(top);
+      return top;
+    }
+
+    async function fetchServerRankings() {
+      const res = await fetch(rankingApiUrl, { method: "GET" });
+      if (!res.ok) throw new Error("Failed to fetch rankings");
+      const data = await res.json();
+      if (!Array.isArray(data.rankings)) return [];
+      return data.rankings.filter((v) => Number.isFinite(v)).slice(0, 5);
+    }
+
+    async function submitScoreToServer(scoreValue) {
+      const res = await fetch(rankingApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ score: scoreValue }),
+      });
+      if (!res.ok) throw new Error("Failed to submit score");
+      const data = await res.json();
+      if (!Array.isArray(data.rankings)) return [];
+      return data.rankings.filter((v) => Number.isFinite(v)).slice(0, 5);
+    }
+
+    async function loadInitialRankings() {
+      try {
+        const serverRankings = await fetchServerRankings();
+        latestRankings = serverRankings;
+        saveRankings(serverRankings);
+      } catch {
+        latestRankings = getRankings();
+      }
+    }
+
+    async function finalizeGame(title) {
+      let rankings;
+      try {
+        rankings = await submitScoreToServer(score);
+        latestRankings = rankings;
+        saveRankings(rankings);
+      } catch {
+        rankings = updateRanking(score);
+        latestRankings = rankings;
+      }
+      showOverlay(title, rankings);
+    }
+
+    function renderRanking(rankings) {
+      rankingListEl.innerHTML = "";
+      if (!rankings.length) {
+        const li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = "아직 기록이 없습니다.";
+        rankingListEl.appendChild(li);
+        return;
+      }
+      rankings.forEach((value) => {
+        const li = document.createElement("li");
+        li.textContent = `${value.toLocaleString()}점`;
+        rankingListEl.appendChild(li);
+      });
+    }
+
+    function getEmptyCells() {
+      const cells = [];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (grid[r][c] === 0) cells.push([r, c]);
+        }
+      }
+      return cells;
+    }
+
+    function addRandomTile() {
+      const empty = getEmptyCells();
+      if (!empty.length) return;
+      const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+      grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function render() {
+      const cells = boardEl.children;
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const idx = r * SIZE + c;
+          const val = grid[r][c];
+          const cell = cells[idx];
+          const base = val > 2048 ? "cell super" : `cell n${val}`;
+          cell.className = base;
+          cell.textContent = val === 0 ? "" : String(val);
+        }
+      }
+      scoreEl.textContent = score;
+      if (score > best) {
+        best = score;
+        localStorage.setItem(bestKey, String(best));
+        bestEl.textContent = best;
+      }
+    }
+
+    function slideAndMerge(line) {
+      const arr = line.filter((v) => v !== 0);
+      let gained = 0;
+      for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] !== 0 && arr[i] === arr[i + 1]) {
+          arr[i] *= 2;
+          gained += arr[i];
+          if (arr[i] === 2048) hasWon = true;
+          arr[i + 1] = 0;
+          i++;
+        }
+      }
+      const merged = arr.filter((v) => v !== 0);
+      while (merged.length < SIZE) merged.push(0);
+      return { line: merged, gained };
+    }
+
+    function toBoardCoord(lineIndex, posIndex, isHorizontal) {
+      return isHorizontal ? { r: lineIndex, c: posIndex } : { r: posIndex, c: lineIndex };
+    }
+
+    function buildMovePlan(direction) {
+      const nextGrid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+      const moves = [];
+      let moved = false;
+      let gainedTotal = 0;
+      let wonNow = false;
+
+      const isHorizontal = direction === "left" || direction === "right";
+      const reverse = direction === "right" || direction === "down";
+
+      for (let i = 0; i < SIZE; i++) {
+        const lineItems = [];
+        for (let j = 0; j < SIZE; j++) {
+          const val = isHorizontal ? grid[i][j] : grid[j][i];
+          if (val !== 0) lineItems.push({ value: val, pos: j });
+        }
+
+        const ordered = reverse ? lineItems.slice().reverse() : lineItems;
+        const outputs = [];
+        for (let k = 0; k < ordered.length; k++) {
+          const current = ordered[k];
+          const next = ordered[k + 1];
+          if (next && current.value === next.value) {
+            const mergedValue = current.value * 2;
+            outputs.push({ value: mergedValue, from: [current.pos, next.pos] });
+            gainedTotal += mergedValue;
+            if (mergedValue === 2048) wonNow = true;
+            k++;
+          } else {
+            outputs.push({ value: current.value, from: [current.pos] });
+          }
+        }
+
+        for (let outIdx = 0; outIdx < outputs.length; outIdx++) {
+          const targetPos = reverse ? SIZE - 1 - outIdx : outIdx;
+          const output = outputs[outIdx];
+          const target = toBoardCoord(i, targetPos, isHorizontal);
+          nextGrid[target.r][target.c] = output.value;
+
+          output.from.forEach((fromPos) => {
+            const from = toBoardCoord(i, fromPos, isHorizontal);
+            if (from.r !== target.r || from.c !== target.c) moved = true;
+            moves.push({
+              fromR: from.r,
+              fromC: from.c,
+              toR: target.r,
+              toC: target.c,
+              value: isHorizontal ? grid[from.r][from.c] : grid[from.r][from.c],
+              isMerge: output.from.length > 1,
+            });
+          });
+        }
+      }
+
+      if (!moved) return { moved: false };
+      return { moved: true, nextGrid, gainedTotal, wonNow, moves };
+    }
+
+    function createMovingTile(value, rect, originRect) {
+      const el = document.createElement("div");
+      el.className = value > 2048 ? "moving-tile super" : `moving-tile n${value}`;
+      el.textContent = String(value);
+      el.style.width = `${rect.width}px`;
+      el.style.height = `${rect.height}px`;
+      el.style.left = `${rect.left - originRect.left}px`;
+      el.style.top = `${rect.top - originRect.top}px`;
+      return el;
+    }
+
+    function animateTileMoves(moves, onDone) {
+      const animated = moves.filter((m) => (m.fromR !== m.toR || m.fromC !== m.toC) || m.isMerge);
+      if (!animated.length) {
+        onDone();
+        return;
+      }
+
+      const cells = boardEl.children;
+      const boardRect = boardEl.getBoundingClientRect();
+      const animatedTiles = [];
+      const hiddenCellIndexes = new Set();
+
+      animated.forEach((moveInfo) => {
+        const fromIdx = moveInfo.fromR * SIZE + moveInfo.fromC;
+        const toIdx = moveInfo.toR * SIZE + moveInfo.toC;
+        const fromCell = cells[fromIdx];
+        const toCell = cells[toIdx];
+        const fromRect = fromCell.getBoundingClientRect();
+        const toRect = toCell.getBoundingClientRect();
+        hiddenCellIndexes.add(fromIdx);
+        const tile = createMovingTile(moveInfo.value, fromRect, boardRect);
+        boardEl.appendChild(tile);
+        animatedTiles.push({
+          tile,
+          dx: toRect.left - fromRect.left,
+          dy: toRect.top - fromRect.top,
+        });
+      });
+
+      requestAnimationFrame(() => {
+        animatedTiles.forEach(({ tile, dx, dy }) => {
+          tile.style.transform = `translate(${dx}px, ${dy}px)`;
+        });
+      });
+
+      hiddenCellIndexes.forEach((idx) => {
+        cells[idx].style.visibility = "hidden";
+      });
+
+      window.setTimeout(() => {
+        animatedTiles.forEach(({ tile }) => tile.remove());
+        hiddenCellIndexes.forEach((idx) => {
+          cells[idx].style.visibility = "";
+        });
+        onDone();
+      }, 150);
+    }
+
+    function move(direction) {
+      if (gameOver || isAnimating) return;
+      const plan = buildMovePlan(direction);
+      if (!plan.moved) return;
+
+      isAnimating = true;
+      animateTileMoves(plan.moves, () => {
+        grid = plan.nextGrid;
+        score += plan.gainedTotal;
+        hasWon = hasWon || plan.wonNow;
+        addRandomTile();
+        render();
+
+        if (hasWon) {
+          gameOver = true;
+          void finalizeGame("You Win!");
+        } else if (!canMove()) {
+          gameOver = true;
+          void finalizeGame("Game Over");
+        }
+        isAnimating = false;
+      });
+    }
+
+    function canMove() {
+      if (getEmptyCells().length) return true;
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const v = grid[r][c];
+          if ((r + 1 < SIZE && grid[r + 1][c] === v) || (c + 1 < SIZE && grid[r][c + 1] === v)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function showOverlay(title, rankings = latestRankings.length ? latestRankings : getRankings()) {
+      overlayTitleEl.textContent = title;
+      finalScoreEl.textContent = `최종 점수: ${score.toLocaleString()}점`;
+      renderRanking(rankings);
+      overlayEl.classList.add("show");
+    }
+
+    function hideOverlay() {
+      overlayEl.classList.remove("show");
+    }
+
+    function handleKeydown(e) {
+      const keyMap = {
+        ArrowUp: "up",
+        ArrowDown: "down",
+        ArrowLeft: "left",
+        ArrowRight: "right",
+        w: "up",
+        a: "left",
+        s: "down",
+        d: "right",
+      };
+      const key = keyMap[e.key] || keyMap[e.key.toLowerCase?.()];
+      if (!key) return;
+      e.preventDefault();
+      move(key);
+    }
+
+    boardWrapEl.addEventListener("touchstart", (e) => {
+      const t = e.changedTouches[0];
+      touchStart = { x: t.clientX, y: t.clientY };
+    }, { passive: true });
+
+    boardWrapEl.addEventListener("touchend", (e) => {
+      if (!touchStart) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStart.x;
+      const dy = t.clientY - touchStart.y;
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      const threshold = 30;
+      if (Math.max(absX, absY) < threshold) return;
+
+      if (absX > absY) {
+        move(dx > 0 ? "right" : "left");
+      } else {
+        move(dy > 0 ? "down" : "up");
+      }
+      touchStart = null;
+    }, { passive: true });
+
+    document.getElementById("restart").addEventListener("click", initGame);
+    document.getElementById("playAgain").addEventListener("click", initGame);
+    window.addEventListener("keydown", handleKeydown);
+
+    setupBoard();
+    void loadInitialRankings();
+    initGame();
+  </script>
+</body>
+</html>
