@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#bbada0" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>2048 Clone</title>
   <style>
     :root {
@@ -83,9 +85,15 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
       gap: 12px;
       margin-bottom: 14px;
       font-size: 15px;
+    }
+
+    .control-buttons {
+      display: flex;
+      gap: 8px;
     }
 
     button {
@@ -240,7 +248,10 @@
 
     <section class="controls">
       <div>같은 숫자를 합쳐서 2048을 만드세요.</div>
-      <button id="restart">새 게임</button>
+      <div class="control-buttons">
+        <button id="installApp" hidden>데스크탑 설치</button>
+        <button id="restart">새 게임</button>
+      </div>
     </section>
 
     <section class="board-wrap" id="boardWrap" aria-label="2048 board">
@@ -269,6 +280,7 @@
     const finalScoreEl = document.getElementById("finalScore");
     const rankingListEl = document.getElementById("rankingList");
     const boardWrapEl = document.getElementById("boardWrap");
+    const installAppButton = document.getElementById("installApp");
     const bestKey = "best-2048-clone";
     const rankingKey = "ranking-2048-clone";
     const rankingApiUrl = "/api/rankings";
@@ -281,6 +293,7 @@
     let isAnimating = false;
     let touchStart = null;
     let latestRankings = [];
+    let deferredInstallPrompt = null;
 
     bestEl.textContent = best;
 
@@ -654,6 +667,36 @@
     document.getElementById("restart").addEventListener("click", initGame);
     document.getElementById("playAgain").addEventListener("click", initGame);
     window.addEventListener("keydown", handleKeydown);
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installAppButton.hidden = false;
+    });
+
+    installAppButton.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      try {
+        await deferredInstallPrompt.userChoice;
+      } finally {
+        deferredInstallPrompt = null;
+        installAppButton.hidden = true;
+      }
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      installAppButton.hidden = true;
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {
+          // If registration fails, game still works without offline install support.
+        });
+      });
+    }
 
     setupBoard();
     void loadInitialRankings();
