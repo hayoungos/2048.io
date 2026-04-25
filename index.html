@@ -249,7 +249,7 @@
     <section class="controls">
       <div>같은 숫자를 합쳐서 2048을 만드세요.</div>
       <div class="control-buttons">
-        <button id="installApp">데스크탑 설치</button>
+        <button id="downloadApp">PC용 다운로드</button>
         <button id="restart">새 게임</button>
       </div>
     </section>
@@ -267,7 +267,7 @@
       </div>
     </section>
 
-    <p class="hint">조작: 방향키 / WASD / 스와이프</p>
+    <p class="hint">조작: 방향키 / WASD / 스와이프 · 설치파일은 GitHub Releases에서 내려받습니다.</p>
   </main>
 
   <script>
@@ -280,10 +280,15 @@
     const finalScoreEl = document.getElementById("finalScore");
     const rankingListEl = document.getElementById("rankingList");
     const boardWrapEl = document.getElementById("boardWrap");
-    const installAppButton = document.getElementById("installApp");
+    const downloadAppButton = document.getElementById("downloadApp");
     const bestKey = "best-2048-clone";
     const rankingKey = "ranking-2048-clone";
     const rankingApiUrl = "/api/rankings";
+    const releaseBaseUrl = "https://github.com/hayoungos/2048.io/releases/latest/download";
+    const downloadTargets = {
+      mac: `${releaseBaseUrl}/2048.dmg`,
+      win: `${releaseBaseUrl}/2048-Setup.exe`,
+    };
 
     let grid = [];
     let score = 0;
@@ -293,7 +298,6 @@
     let isAnimating = false;
     let touchStart = null;
     let latestRankings = [];
-    let deferredInstallPrompt = null;
 
     bestEl.textContent = best;
 
@@ -399,6 +403,13 @@
         li.textContent = `${value.toLocaleString()}점`;
         rankingListEl.appendChild(li);
       });
+    }
+
+    function getDownloadUrlByPlatform() {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes("mac")) return downloadTargets.mac;
+      if (ua.includes("win")) return downloadTargets.win;
+      return "";
     }
 
     function getEmptyCells() {
@@ -668,28 +679,13 @@
     document.getElementById("playAgain").addEventListener("click", initGame);
     window.addEventListener("keydown", handleKeydown);
 
-    window.addEventListener("beforeinstallprompt", (event) => {
-      event.preventDefault();
-      deferredInstallPrompt = event;
-    });
-
-    installAppButton.addEventListener("click", async () => {
-      if (!deferredInstallPrompt) {
-        alert("브라우저 주소창의 설치 아이콘을 눌러 설치해 주세요.");
+    downloadAppButton.addEventListener("click", () => {
+      const url = getDownloadUrlByPlatform();
+      if (!url) {
+        alert("현재 OS용 설치 파일이 아직 준비되지 않았습니다.");
         return;
       }
-      deferredInstallPrompt.prompt();
-      try {
-        await deferredInstallPrompt.userChoice;
-      } finally {
-        deferredInstallPrompt = null;
-      }
-    });
-
-    window.addEventListener("appinstalled", () => {
-      deferredInstallPrompt = null;
-      installAppButton.textContent = "설치 완료";
-      installAppButton.disabled = true;
+      window.open(url, "_blank");
     });
 
     if ("serviceWorker" in navigator) {
