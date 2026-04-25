@@ -249,7 +249,7 @@
     <section class="controls">
       <div>같은 숫자를 합쳐서 2048을 만드세요.</div>
       <div class="control-buttons">
-        <button id="installApp" hidden>데스크탑 설치</button>
+        <button id="installApp">데스크탑 설치</button>
         <button id="restart">새 게임</button>
       </div>
     </section>
@@ -671,23 +671,25 @@
     window.addEventListener("beforeinstallprompt", (event) => {
       event.preventDefault();
       deferredInstallPrompt = event;
-      installAppButton.hidden = false;
     });
 
     installAppButton.addEventListener("click", async () => {
-      if (!deferredInstallPrompt) return;
+      if (!deferredInstallPrompt) {
+        alert("브라우저 주소창의 설치 아이콘을 눌러 설치해 주세요.");
+        return;
+      }
       deferredInstallPrompt.prompt();
       try {
         await deferredInstallPrompt.userChoice;
       } finally {
         deferredInstallPrompt = null;
-        installAppButton.hidden = true;
       }
     });
 
     window.addEventListener("appinstalled", () => {
       deferredInstallPrompt = null;
-      installAppButton.hidden = true;
+      installAppButton.textContent = "설치 완료";
+      installAppButton.disabled = true;
     });
 
     if ("serviceWorker" in navigator) {
